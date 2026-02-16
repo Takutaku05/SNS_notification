@@ -7,10 +7,10 @@ from googleapiclient.discovery import build
 
 import models
 
-# パス設定
+# パス設定（Outlook版に合わせて明示的な名前に変更）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CREDENTIALS_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'credentials.json')
-TOKEN_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'token.json')
+CREDENTIALS_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'gmail_credentials.json')
+TOKEN_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'gmail_token.json')
 
 # 権限のスコープ
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
@@ -43,7 +43,7 @@ def fetch_all_unread_ids():
     page_token = None
     
     while True:
-        # IDだけ欲しいので fields='messages(id),nextPageToken' で通信量を節約
+        # IDだけ欲しいので fieldsで通信量を節約
         results = service.users().messages().list(
             userId='me', 
             labelIds=['UNREAD'], 
@@ -66,10 +66,8 @@ def fetch_details_and_save(target_ids):
     service = get_gmail_service()
     email_data_list = []
     
-    # 一度に大量に処理しすぎないようループ（ここではシンプルに実装）
     count = 0
     for msg_id in target_ids:
-        # 最大50件などで制限したい場合はここでbreakしてもOK
         if count >= 50: 
             print("一度の取得上限(50件)に達したため中断します")
             break
@@ -102,7 +100,7 @@ def fetch_details_and_save(target_ids):
                 'snippet': snippet,
                 'received_at': received_at
             })
-            print(f"取得: {subject[:20]}...")
+            print(f"取得(Gmail): {subject[:20]}...")
             count += 1
             
         except Exception as e:
@@ -111,39 +109,37 @@ def fetch_details_and_save(target_ids):
     if email_data_list:
         models.save_emails(email_data_list)
 
-def sync_gmails():
-    """GmailとDBを同期する（新規取得 ＋ 既読削除）"""
-    print("同期を開始します...")
+def sync_gmail():
+    """GmailとDBを同期する"""
+    print("Gmailの同期を開始します...")
     
     # 1. サーバー(Gmail)にある未読IDを取得
-    server_unread_ids = fetch_all_unread_ids()
+    try:
+        server_unread_ids = fetch_all_unread_ids()
+    except Exception as e:
+        print(f"Gmailへの接続に失敗しました: {e}")
+        return
     
-    # 2. ローカル(DB)にあるIDを取得
-    local_stored_ids = models.get_all_message_ids()
+    # 2. ローカル(DB)にあるGmailのIDのみを取得（他サービスのIDを混ぜない）
+    if hasattr(models, 'get_message_ids_by_service'):
+        local_stored_ids = models.get_message_ids_by_service('gmail')
+    else:
+        # 古いmodels.pyの場合のフォールバック
+        local_stored_ids = models.get_all_message_ids()
     
-    # 3. 差分を計算（集合演算）
-    
-    # 新しく来たメール (サーバーにはあるが、DBにはない)
+    # 3. 差分を計算
     new_ids = server_unread_ids - local_stored_ids
-    
-    # 他で既読になったメール (DBにはあるが、サーバーにはない)
     read_ids = local_stored_ids - server_unread_ids
     
     # 4. DBを更新
-    
-    # 既読になったものを削除
     if read_ids:
-        print(f"既読検知: {len(read_ids)} 件 -> DBから削除します")
+        print(f"既読検知(Gmail): {len(read_ids)} 件 -> DBから削除します")
         models.delete_emails(read_ids)
     
-    # 新着メールを取得して保存
     if new_ids:
-        print(f"新着検知: {len(new_ids)} 件 -> 詳細を取得して保存します")
+        print(f"新着検知(Gmail): {len(new_ids)} 件 -> 詳細を取得して保存します")
         fetch_details_and_save(new_ids)
-    
-    if not read_ids and not new_ids:
-        print("変更はありません（最新の状態です）")
 
 if __name__ == '__main__':
     models.init_db()
-    sync_gmails()
+    sync_gmail()
