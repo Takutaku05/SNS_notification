@@ -3,6 +3,7 @@ import os
 import models
 import gmail_fetcher
 import imap_fetcher
+import outlook_fetcher
 
 app = Flask(__name__, static_folder='../../frontend')
 
@@ -35,8 +36,9 @@ def mark_as_read(db_id):
         success = gmail_fetcher.mark_as_read(message_id)
     elif service.startswith('imap:'):
         success = imap_fetcher.mark_as_read(service, message_id)
+    elif service == 'outlook':
+        success = outlook_fetcher.mark_as_read(message_id)
     else:
-        # その他のサービス（Outlookなど）は未対応だが、DBからは削除する運用にするか？
         # いったんDB削除だけしておく
         success = True
         print(f"Warning: {service} の既読連携は未実装です。DBからのみ削除します。")

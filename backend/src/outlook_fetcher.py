@@ -12,7 +12,7 @@ CREDENTIALS_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'outlook_credenti
 TOKEN_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'outlook_token.json')
 
 # 設定
-SCOPES = ['User.Read', 'Mail.Read']
+SCOPES = ['User.Read', 'Mail.ReadWrite']
 GRAPH_API_ENDPOINT = 'https://graph.microsoft.com/v1.0'
 
 def get_access_token():
@@ -181,6 +181,30 @@ def sync_outlook():
     if new_ids:
         print(f"新着検知(Outlook): {len(new_ids)} 件 -> 詳細を取得して保存します")
         fetch_details_and_save(new_ids)
+
+def mark_as_read(message_id):
+    """Outlookのメールを既読にする"""
+    token = get_access_token()
+    headers = {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+    }
+    
+    url = f"{GRAPH_API_ENDPOINT}/me/messages/{message_id}"
+    data = {'isRead': True}
+
+    try:
+        # PATCHメソッドで更新
+        response = requests.patch(url, headers=headers, json=data)
+        if response.status_code == 200:
+            print(f"Outlook既読化成功: {message_id}")
+            return True
+        else:
+            print(f"Outlook既読化失敗: {response.status_code} {response.text}")
+            return False
+    except Exception as e:
+        print(f"Outlook既読化エラー: {e}")
+        return False
 
 if __name__ == '__main__':
     models.init_db()
