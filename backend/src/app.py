@@ -43,6 +43,7 @@ def mark_as_read(db_id):
         success = True
         print(f"Warning: {service} の既読連携は未実装です。DBからのみ削除します。")
 
+
     if success:
         # DBから削除（またはステータス更新）
         # 今回の要件では「既読になったらリストから消える」＝DB削除 or status=1
@@ -51,6 +52,22 @@ def mark_as_read(db_id):
         return jsonify({'success': True})
     else:
         return jsonify({'error': 'Failed to mark as read'}), 500
+
+@app.route('/api/emails/<int:db_id>/pending', methods=['POST'])
+def mark_as_pending(db_id):
+    """メールを保留にする"""
+    if models.update_email_status(db_id, 1): # 1: Pending
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Failed to update status'}), 500
+
+@app.route('/api/emails/<int:db_id>/important', methods=['POST'])
+def mark_as_important(db_id):
+    """メールを重要にする"""
+    if models.update_email_status(db_id, 2): # 2: Important
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Failed to update status'}), 500
 
 if __name__ == '__main__':
     # DB初期化確認

@@ -119,6 +119,22 @@ def get_email_by_id(db_id):
         return dict(row)
     return None
 
+def update_email_status(db_id, status):
+    """メールのステータスを更新する"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE emails SET status = ? WHERE id = ?", (status, db_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"ステータス更新エラー: {e}")
+        with open("db_error.log", "a") as f:
+            f.write(f"ステータス更新エラー: {e}\n")
+        return False
+    finally:
+        conn.close()
+
 # 初期化実行
 if __name__ == "__main__":
     init_db()

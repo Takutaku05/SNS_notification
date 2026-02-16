@@ -82,6 +82,25 @@
             background-color: #545b62;
         }
 
+        .btn-pending {
+            background-color: #ffc107;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        .btn-pending:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-important {
+            background-color: #dc3545;
+            margin-right: 10px;
+        }
+
+        .btn-important:hover {
+            background-color: #c82333;
+        }
+
         #loading {
             color: #888;
         }
@@ -102,6 +121,8 @@
             <div class="snippet" id="snippet"></div>
 
             <button class="btn btn-reload" onclick="loadNextEmail()">スキップ</button>
+            <button class="btn btn-pending" onclick="markAsPending()">保留</button>
+            <button class="btn btn-important" onclick="markAsImportant()">重要</button>
             <button class="btn" onclick="markAsRead()">既読</button>
         </div>
         <div id="no-email" style="display: none;">
@@ -166,6 +187,42 @@
                     loadNextEmail();
                 } else {
                     alert('既読化に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('通信エラー');
+            }
+        }
+
+        async function markAsPending() {
+            if (!currentEmailId) return;
+
+            try {
+                const response = await fetch(`/api/emails/${currentEmailId}/pending`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    loadNextEmail();
+                } else {
+                    alert('保留に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('通信エラー');
+            }
+        }
+
+        async function markAsImportant() {
+            if (!currentEmailId) return;
+
+            try {
+                const response = await fetch(`/api/emails/${currentEmailId}/important`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    loadNextEmail();
+                } else {
+                    alert('重要設定に失敗しました');
                 }
             } catch (error) {
                 console.error('Error:', error);
