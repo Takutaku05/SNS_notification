@@ -120,7 +120,7 @@
             </div>
             <div class="snippet" id="snippet"></div>
 
-            <button class="btn btn-reload" onclick="loadNextEmail()">スキップ</button>
+            <button class="btn btn-reload" onclick="skipEmail()">スキップ</button>
             <button class="btn btn-pending" onclick="markAsPending()">保留</button>
             <button class="btn btn-important" onclick="markAsImportant()">重要</button>
             <button class="btn" onclick="markAsRead()">既読</button>
@@ -134,6 +134,19 @@
 
     <script>
         let currentEmailId = null;
+        let skipCount = 0; // 追加: スキップした回数を保持
+
+        // スキップボタンから呼ばれる関数
+        function skipEmail() {
+            skipCount++; // カウントを増やす
+            loadNextEmail();
+        }
+
+        // 再チェックボタンなどから呼ばれる関数（リセットしてロード）
+        function resetAndLoad() {
+            skipCount = 0;
+            loadNextEmail();
+        }
 
         async function loadNextEmail() {
             document.getElementById('loading').style.display = 'block';
@@ -141,7 +154,8 @@
             document.getElementById('no-email').style.display = 'none';
 
             try {
-                const response = await fetch('/api/emails/next');
+                // offsetパラメータをつけてリクエスト
+                const response = await fetch(`/api/emails/next?offset=${skipCount}`);
                 if (response.ok) {
                     const email = await response.json();
                     renderEmail(email);
@@ -183,7 +197,7 @@
                     method: 'POST'
                 });
                 if (response.ok) {
-                    // 成功したら次を読み込む
+                    skipCount = 0; // 成功したらリストが詰まるのでオフセットをリセット
                     loadNextEmail();
                 } else {
                     alert('既読化に失敗しました');
@@ -202,6 +216,7 @@
                     method: 'POST'
                 });
                 if (response.ok) {
+                    skipCount = 0; // リセット
                     loadNextEmail();
                 } else {
                     alert('保留に失敗しました');
@@ -220,6 +235,7 @@
                     method: 'POST'
                 });
                 if (response.ok) {
+                    skipCount = 0; // リセット
                     loadNextEmail();
                 } else {
                     alert('重要設定に失敗しました');

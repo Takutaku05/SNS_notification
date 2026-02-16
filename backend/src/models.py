@@ -92,13 +92,13 @@ def get_message_ids_by_service(service_name):
     conn.close()
     return ids
 
-def get_next_unread_email():
+def get_next_unread_email(offset=0):
     """未読メールを1件取得する (古い順)"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row  # 辞書っぽく扱えるようにする
     c = conn.cursor()
     # status=0 (Unread) の古いものを1件取得
-    c.execute("SELECT * FROM emails WHERE status=0 ORDER BY received_at ASC LIMIT 1")
+    c.execute("SELECT * FROM emails WHERE status=0 ORDER BY received_at ASC LIMIT 1 OFFSET ?", (offset,))
     row = c.fetchone()
     conn.close()
     

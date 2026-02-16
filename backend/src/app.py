@@ -12,15 +12,6 @@ app = Flask(__name__, static_folder='../../frontend')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
 
-@app.route('/api/emails/next', methods=['GET'])
-def get_next_email():
-    """未読メールを1件取得"""
-    email = models.get_next_unread_email()
-    if email:
-        return jsonify(email)
-    else:
-        return jsonify(None), 404
-
 @app.route('/api/emails/<int:db_id>/read', methods=['POST'])
 def mark_as_read(db_id):
     """メールを既読にする"""
@@ -68,6 +59,18 @@ def mark_as_important(db_id):
         return jsonify({'success': True})
     else:
         return jsonify({'error': 'Failed to update status'}), 500
+    
+@app.route('/api/emails/next', methods=['GET'])
+def get_next_unread_email():
+    """未読メールを1件取得"""
+    # クエリパラメータからoffsetを取得 (デフォルトは0)
+    offset = request.args.get('offset', default=0, type=int)
+    
+    email = models.get_next_unread_email(offset) # offsetを渡す
+    if email:
+        return jsonify(email)
+    else:
+        return jsonify(None), 404
 
 if __name__ == '__main__':
     # DB初期化確認
