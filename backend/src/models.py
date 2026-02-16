@@ -83,6 +83,15 @@ def delete_emails(message_ids):
     print(f"{c.rowcount} 件のメールをDBから削除しました（外部で既読化）")
     conn.close()
 
+def get_message_ids_by_service(service_name):
+    """指定したサービスのmessage_idのみをセットで返す"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT message_id FROM emails WHERE service=?", (service_name,))
+    ids = {row[0] for row in c.fetchall()}
+    conn.close()
+    return ids
+
 # 初期化実行
 if __name__ == "__main__":
     init_db()
