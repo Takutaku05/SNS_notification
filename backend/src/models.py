@@ -8,6 +8,7 @@ DB_PATH = os.path.join(BASE_DIR, '..', 'db', 'emails.db')
 
 def init_db():
     """データベースとテーブルの初期化"""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     # emails テーブル: アプリ内で管理するメール
