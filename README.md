@@ -21,3 +21,4 @@
 ```
 ### ライブラリのインストール
 `pip install msal requests`
+`pip3 install -r requirements.txt`
