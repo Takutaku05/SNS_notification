@@ -61,6 +61,28 @@ def save_emails(email_list):
     finally:
         conn.close()
 
+def get_all_message_ids():
+    """DBに保存されている全メールのmessage_idをセット(集合)で返す"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT message_id FROM emails")
+    ids = {row[0] for row in c.fetchall()}
+    conn.close()
+    return ids
+
+def delete_emails(message_ids):
+    """指定されたIDのメールをDBから削除する（既読になったため）"""
+    if not message_ids:
+        return
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    placeholders = ','.join('?' for _ in message_ids)
+    # タプルに変換して渡す
+    c.execute(f"DELETE FROM emails WHERE message_id IN ({placeholders})", list(message_ids))
+    conn.commit()
+    print(f"{c.rowcount} 件のメールをDBから削除しました（外部で既読化）")
+    conn.close()
+
 # 初期化実行
 if __name__ == "__main__":
     init_db()
