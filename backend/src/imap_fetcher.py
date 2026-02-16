@@ -198,6 +198,60 @@ def sync_imap_all():
     for account in accounts:
         sync_one_account(account)
 
+def mark_as_read(service_name, message_id):
+    """IMAPのメールを既読にする"""
+    # service_name = "imap:user@example.com"
+    if not service_name.startswith('imap:'):
+        return False
+        
+    target_username = service_name.replace('imap:', '')
+    
+    if not os.path.exists(CREDENTIALS_PATH):
+        return False
+
+    with open(CREDENTIALS_PATH, 'r', encoding='utf-8') as f:
+        accounts = json.load(f)
+        
+    target_account = None
+    for account in accounts:
+        if account['username'] == target_username:
+            target_account = account
+            break
+            
+    if not target_account:
+        print(f"アカウント設定が見つかりません: {target_username}")
+        return False
+        
+    mail = get_imap_connection(target_account)
+    if not mail:
+        return False
+        
+    try:
+        mail.select('INBOX')
+        
+        # message_id は "imap_user@example.com_123" の形式
+        # ここから本来のUID "123" を取り出す
+        prefix = f"imap_{target_username}_"
+        if not message_id.startswith(prefix):
+             print(f"ID形式エラー: {message_id}")
+             return False
+             
+        uid = message_id[len(prefix):]
+        
+        # 既読フラグを立てる
+        mail.store(uid, '+FLAGS', '\\Seen')
+        print(f"IMAP既読化成功: {uid} ({target_username})")
+        return True
+        
+    except Exception as e:
+        print(f"IMAP既読化エラー: {e}")
+        return False
+    finally:
+        try:
+            mail.logout()
+        except:
+            pass
+
 if __name__ == '__main__':
     models.init_db()
     sync_imap_all()

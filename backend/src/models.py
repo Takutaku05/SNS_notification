@@ -92,6 +92,33 @@ def get_message_ids_by_service(service_name):
     conn.close()
     return ids
 
+def get_next_unread_email():
+    """未読メールを1件取得する (古い順)"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row  # 辞書っぽく扱えるようにする
+    c = conn.cursor()
+    # status=0 (Unread) の古いものを1件取得
+    c.execute("SELECT * FROM emails WHERE status=0 ORDER BY received_at ASC LIMIT 1")
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return dict(row)
+    return None
+
+def get_email_by_id(db_id):
+    """指定されたDB上のID(主キー)からメール情報を取得"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM emails WHERE id=?", (db_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return dict(row)
+    return None
+
 # 初期化実行
 if __name__ == "__main__":
     init_db()

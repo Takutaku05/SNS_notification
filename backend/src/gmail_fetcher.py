@@ -109,6 +109,21 @@ def fetch_details_and_save(target_ids):
     if email_data_list:
         models.save_emails(email_data_list)
 
+def mark_as_read(message_id):
+    """Gmailのメールを既読にする（UNREADラベルを外す）"""
+    service = get_gmail_service()
+    try:
+        service.users().messages().modify(
+            userId='me',
+            id=message_id,
+            body={'removeLabelIds': ['UNREAD']}
+        ).execute()
+        print(f"Gmail既読化成功: {message_id}")
+        return True
+    except Exception as e:
+        print(f"Gmail既読化エラー: {e}")
+        return False
+
 def sync_gmail():
     """GmailとDBを同期する"""
     print("Gmailの同期を開始します...")
