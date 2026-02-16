@@ -92,13 +92,13 @@ SNS_notification/
 
 ## 実行方法
 ### メールの読み込み
-backend\src\gmail_fetcher.py
-backend\src\imap_fetcher.py
-backend\src\outlook_fetcher.py
+`backend\src\gmail_fetcher.py`
+`backend\src\imap_fetcher.py`
+`backend\src\outlook_fetcher.py`
 のいずれか最低1個を実行
 
 ### バックエンドの実行
-backend\src\app.py
+`backend\src\app.py`
 を実行
 
 ### ローカルサイトにアクセス
