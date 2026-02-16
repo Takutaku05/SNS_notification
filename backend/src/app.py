@@ -10,7 +10,7 @@ app = Flask(__name__, static_folder='../../frontend')
 # 静的ファイルの提供 (index.htmlなど)
 @app.route('/')
 def index():
-    return send_from_directory(app.static_folder, 'index.html')
+    return send_from_directory(app.static_folder, 'read.html')
 
 @app.route('/api/emails/<int:db_id>/read', methods=['POST'])
 def mark_as_read(db_id):
