@@ -94,8 +94,8 @@ def fetch_details_and_save(mail, target_ids_with_prefix, account_config, account
         target_pairs.append((tid, uid))
 
     for db_id, uid in target_pairs:
-        if count >= 30: # アカウントごとの取得上限
-            print(f"[{account_config['username']}] 上限(30件)のため中断")
+        if count >= 10: # アカウントごとの取得上限
+            print(f"[{account_config['username']}] 上限(10件)のため中断")
             break
 
         try:

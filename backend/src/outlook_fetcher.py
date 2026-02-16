@@ -104,8 +104,8 @@ def fetch_details_and_save(target_ids):
     
     count = 0
     for msg_id in target_ids:
-        if count >= 50:
-            print("一度の取得上限(50件)に達したため中断します")
+        if count >= 10:
+            print("一度の取得上限(10件)に達したため中断します")
             break
 
         try:
