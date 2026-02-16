@@ -25,6 +25,38 @@ def init_db():
     conn.commit()
     conn.close()
 
+def save_emails(email_list):
+    """取得したメールリストをデータベースに保存する"""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    # リストの中身をタプルの形式に変換
+    data = []
+    for e in email_list:
+        data.append((
+            e['service'],
+            e['message_id'],
+            e['subject'],
+            e['sender'],
+            e['snippet'],
+            e['received_at'],
+            0 # status: 0=Unread
+        ))
+
+    # データベースに保存
+    try:
+        c.executemany('''
+            INSERT OR IGNORE INTO emails 
+            (service, message_id, subject, sender, snippet, received_at, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', data)
+        conn.commit()
+        print(f"{c.rowcount} 件の新規メールを保存しました")
+    except sqlite3.Error as e:
+        print(f"保存エラー: {e}")
+    finally:
+        conn.close()
+
 # 初期化実行
 if __name__ == "__main__":
     init_db()
