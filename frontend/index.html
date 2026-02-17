@@ -53,6 +53,25 @@
         .btn-large:active {
             transform: translateY(0);
         }
+
+        .btn-small {
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+        }
+
+        .btn-small:hover {
+            opacity: 0.8;
+        }
+
+        .btn-small:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
@@ -63,8 +82,45 @@
             <a href="/read" class="btn-large" style="background-color: #007bff;">未読を見る</a>
             <a href="/important" class="btn-large" style="background-color: #dc3545;">重要を見る</a>
             <a href="/hold" class="btn-large" style="background-color: #ffc107; color: #333;">保留を見る</a>
+
+            <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                <p style="margin-bottom: 10px; color: #666;">メール手動取得</p>
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="fetchEmails('gmail')" class="btn-small"
+                        style="background-color: #ea4335;">Gmail</button>
+                    <button onclick="fetchEmails('outlook')" class="btn-small"
+                        style="background-color: #0078d4;">Outlook</button>
+                    <button onclick="fetchEmails('imap')" class="btn-small"
+                        style="background-color: #6c757d;">IMAP</button>
+                </div>
+                <p id="status-message" style="margin-top: 10px; font-size: 0.9rem; min-height: 1.2em;"></p>
+            </div>
         </div>
     </div>
+
+    <script>
+        async function fetchEmails(service) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = `${service} の取得を開始しました...`;
+            statusEl.style.color = '#666';
+
+            try {
+                const response = await fetch(`/api/fetch/${service}`, { method: 'POST' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusEl.textContent = `${service} の取得が完了しました`;
+                    statusEl.style.color = 'green';
+                } else {
+                    statusEl.textContent = `エラー: ${data.error || '不明なエラー'}`;
+                    statusEl.style.color = 'red';
+                }
+            } catch (error) {
+                statusEl.textContent = `通信エラー: ${error.message}`;
+                statusEl.style.color = 'red';
+            }
+        }
+    </script>
 </body>
 
 </html>

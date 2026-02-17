@@ -86,6 +86,36 @@ def get_next_email():
     else:
         return jsonify(None), 404
 
+@app.route('/api/fetch/gmail', methods=['POST'])
+def fetch_gmail():
+    """Gmailの同期を手動実行"""
+    try:
+        gmail_fetcher.sync_gmail()
+        return jsonify({'success': True, 'message': 'Gmail sync started'})
+    except Exception as e:
+        print(f"Gmail sync error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/fetch/outlook', methods=['POST'])
+def fetch_outlook():
+    """Outlookの同期を手動実行"""
+    try:
+        outlook_fetcher.sync_outlook()
+        return jsonify({'success': True, 'message': 'Outlook sync started'})
+    except Exception as e:
+        print(f"Outlook sync error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/fetch/imap', methods=['POST'])
+def fetch_imap():
+    """IMAPの同期を手動実行"""
+    try:
+        imap_fetcher.sync_imap_all()
+        return jsonify({'success': True, 'message': 'IMAP sync started'})
+    except Exception as e:
+        print(f"IMAP sync error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     # DB初期化確認
     models.init_db()
