@@ -81,11 +81,6 @@ SNS_notification/
 │   ├── db/
 │   │   └── emails.db
 │   └── src/
-│       ├── __pycache__/
-│       │   ├── gmail_fetcher.cpython-312.pyc
-│       │   ├── imap_fetcher.cpython-312.pyc
-│       │   ├── models.cpython-312.pyc
-│       │   └── outlook_fetcher.cpython-312.pyc
 │       ├── app.py
 │       ├── gmail_fetcher.py
 │       ├── imap_fetcher.py
