@@ -227,3 +227,17 @@ def sync_gmail():
 if __name__ == '__main__':
     models.init_db()
     sync_gmail()
+
+def delete_email(message_id):
+    """Gmailのメールをゴミ箱に移動する"""
+    service = get_gmail_service()
+    try:
+        service.users().messages().trash(
+            userId='me',
+            id=message_id
+        ).execute()
+        print(f"Gmail削除(ゴミ箱): {message_id}")
+        return True
+    except Exception as e:
+        print(f"Gmail削除エラー: {e}")
+        return False

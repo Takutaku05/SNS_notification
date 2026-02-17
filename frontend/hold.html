@@ -10,7 +10,7 @@
             font-family: 'Helvetica Neue', Arial, sans-serif;
             background-color: #f4f7f6;
             display: flex;
-            justify_content: center;
+            justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
@@ -101,6 +101,16 @@
             background-color: #c82333;
         }
 
+        .btn-delete {
+            background-color: #343a40;
+            /* ダークグレー */
+            margin-right: 10px;
+        }
+
+        .btn-delete:hover {
+            background-color: #23272b;
+        }
+
         #loading {
             color: #888;
         }
@@ -124,6 +134,7 @@
             <div class="snippet" id="snippet"></div>
 
             <button class="btn btn-reload" onclick="skipEmail()">スキップ</button>
+            <button class="btn btn-delete" onclick="deleteEmail()">削除</button>
             <button class="btn btn-pending" onclick="markAsPending()">保留</button>
             <button class="btn btn-important" onclick="markAsImportant()">重要</button>
             <button class="btn" onclick="markAsRead()">既読</button>
@@ -242,6 +253,29 @@
                     loadNextEmail();
                 } else {
                     alert('重要設定に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('通信エラー');
+            }
+        }
+
+        async function deleteEmail() {
+            if (!currentEmailId) return;
+
+            if (!confirm('本当に削除しますか？（サーバーからも削除されます）')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/emails/${currentEmailId}/delete`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    skipCount = 0; // リセット
+                    loadNextEmail();
+                } else {
+                    alert('削除に失敗しました');
                 }
             } catch (error) {
                 console.error('Error:', error);

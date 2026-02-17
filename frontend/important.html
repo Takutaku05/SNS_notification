@@ -10,7 +10,7 @@
             font-family: 'Helvetica Neue', Arial, sans-serif;
             background-color: #f4f7f6;
             display: flex;
-            justify_content: center;
+            justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
@@ -101,11 +101,22 @@
             background-color: #c82333;
         }
 
+        .btn-delete {
+            background-color: #343a40;
+            /* ダークグレー */
+            margin-right: 10px;
+        }
+
+        .btn-delete:hover {
+            background-color: #23272b;
+        }
+
         /* 重要解除ボタン用のスタイル */
         .btn-unimportant {
             background-color: #6c757d;
             margin-right: 10px;
         }
+
         .btn-unimportant:hover {
             background-color: #5a6268;
         }
@@ -133,6 +144,7 @@
             <div class="snippet" id="snippet"></div>
 
             <button class="btn btn-reload" onclick="skipEmail()">スキップ</button>
+            <button class="btn btn-delete" onclick="deleteEmail()">削除</button>
             <button class="btn btn-pending" onclick="markAsPending()">保留</button>
             <button class="btn btn-unimportant" onclick="markAsUnimportant()">重要解除</button>
             <button class="btn" onclick="markAsRead()">既読</button>
@@ -146,7 +158,7 @@
 
     <script>
         let currentEmailId = null;
-        let skipCount = 0; 
+        let skipCount = 0;
 
         function skipEmail() {
             skipCount++;
@@ -226,7 +238,7 @@
                     method: 'POST'
                 });
                 if (response.ok) {
-                    skipCount = 0; 
+                    skipCount = 0;
                     loadNextEmail();
                 } else {
                     alert('保留に失敗しました');
@@ -249,6 +261,29 @@
                     loadNextEmail();
                 } else {
                     alert('重要解除に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('通信エラー');
+            }
+        }
+
+        async function deleteEmail() {
+            if (!currentEmailId) return;
+
+            if (!confirm('本当に削除しますか？（サーバーからも削除されます）')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/emails/${currentEmailId}/delete`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    skipCount = 0; // リセット
+                    loadNextEmail();
+                } else {
+                    alert('削除に失敗しました');
                 }
             } catch (error) {
                 console.error('Error:', error);

@@ -140,6 +140,36 @@ def get_next_email():
     else:
         return jsonify(None), 404
 
+@app.route('/api/emails/<int:db_id>/delete', methods=['POST'])
+def delete_email_route(db_id):
+    """メールをサーバーから削除し、DBからも消す"""
+    email = models.get_email_by_id(db_id)
+    if not email:
+        return jsonify({'error': 'Email not found'}), 404
+        
+    service = email['service']
+    message_id = email['message_id']
+    success = False
+    
+    # サービスごとの削除処理を実行
+    if service == 'gmail':
+        success = gmail_fetcher.delete_email(message_id)
+    elif service.startswith('imap:'):
+        success = imap_fetcher.delete_email(service, message_id)
+    elif service == 'outlook':
+        success = outlook_fetcher.delete_email(message_id)
+    else:
+        # 未知のサービスならDB削除のみ許可
+        success = True
+        print(f"Warning: {service} の削除連携は未実装です。DBからのみ削除します。")
+
+    if success:
+        # DBから削除
+        models.delete_emails([message_id])
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Failed to delete email'}), 500
+
 @app.route('/api/fetch/gmail', methods=['POST'])
 def fetch_gmail():
     """Gmailの同期を手動実行"""

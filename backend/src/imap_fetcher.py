@@ -412,3 +412,58 @@ def mark_as_unimportant(service_name, message_id):
 if __name__ == '__main__':
     models.init_db()
     sync_imap_all()
+
+def delete_email(service_name, message_id):
+    """IMAPのメールに削除フラグを立てて削除する"""
+    if not service_name.startswith('imap:'):
+        return False
+        
+    target_username = service_name.replace('imap:', '')
+    
+    if not os.path.exists(CREDENTIALS_PATH):
+        return False
+
+    with open(CREDENTIALS_PATH, 'r', encoding='utf-8') as f:
+        accounts = json.load(f)
+        
+    target_account = None
+    for account in accounts:
+        if account['username'] == target_username:
+            target_account = account
+            break
+            
+    if not target_account:
+        print(f"アカウント設定が見つかりません: {target_username}")
+        return False
+        
+    mail = get_imap_connection(target_account)
+    if not mail:
+        return False
+        
+    try:
+        mail.select('INBOX')
+        
+        # message_id は "imap_user@example.com_123" の形式
+        prefix = f"imap_{target_username}_"
+        if not message_id.startswith(prefix):
+             print(f"ID形式エラー: {message_id}")
+             return False
+             
+        uid = message_id[len(prefix):]
+        
+        # 削除フラグを立てる
+        mail.store(uid, '+FLAGS', '\\Deleted')
+        # サーバーによってはEXPUNGEが必要（完全に削除）
+        mail.expunge()
+        
+        print(f"IMAP削除成功: {uid} ({target_username})")
+        return True
+        
+    except Exception as e:
+        print(f"IMAP削除エラー: {e}")
+        return False
+    finally:
+        try:
+            mail.logout()
+        except:
+            pass

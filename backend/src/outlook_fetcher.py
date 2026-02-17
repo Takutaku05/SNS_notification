@@ -293,3 +293,25 @@ def mark_as_unimportant(message_id):
 if __name__ == '__main__':
     models.init_db()
     sync_outlook()
+
+def delete_email(message_id):
+    """Outlookのメールを削除する"""
+    token = get_access_token()
+    headers = {
+        'Authorization': 'Bearer ' + token
+    }
+    
+    url = f"{GRAPH_API_ENDPOINT}/me/messages/{message_id}"
+
+    try:
+        # Outlook APIでは削除成功時に204 No Contentが返ることが多い
+        response = requests.delete(url, headers=headers)
+        if response.status_code == 204 or response.status_code == 200:
+            print(f"Outlook削除成功: {message_id}")
+            return True
+        else:
+            print(f"Outlook削除失敗: {response.status_code} {response.text}")
+            return False
+    except Exception as e:
+        print(f"Outlook削除エラー: {e}")
+        return False
