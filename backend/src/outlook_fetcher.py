@@ -109,9 +109,9 @@ def fetch_details_and_save(target_ids):
             break
 
         try:
-            # 詳細取得
+            # 詳細取得 (flag も取得項目に追加)
             url = f"{GRAPH_API_ENDPOINT}/me/messages/{msg_id}"
-            params = {'$select': 'subject,from,bodyPreview,receivedDateTime'}
+            params = {'$select': 'subject,from,bodyPreview,receivedDateTime,flag'}
             
             response = requests.get(url, headers=headers, params=params)
             if response.status_code == 404:
@@ -132,15 +132,23 @@ def fetch_details_and_save(target_ids):
             else:
                 received_at = datetime.datetime.now()
 
+            # フラグ判定
+            # flag: { "flagStatus": "flagged" } または "notFlagged"
+            flag_status = detail.get('flag', {}).get('flagStatus')
+            status = 2 if flag_status == 'flagged' else 0
+
             email_data_list.append({
                 'service': 'outlook',
                 'message_id': msg_id,
                 'subject': subject,
                 'sender': sender,
                 'snippet': snippet,
-                'received_at': received_at
+                'received_at': received_at,
+                'status': status
             })
-            print(f"取得(Outlook): {subject[:20]}...")
+            
+            status_str = "★重要" if status == 2 else "未読"
+            print(f"取得(Outlook): {subject[:20]}... [{status_str}]")
             count += 1
             
         except Exception as e:
@@ -148,6 +156,34 @@ def fetch_details_and_save(target_ids):
 
     if email_data_list:
         models.save_emails(email_data_list)
+
+def update_flagged_status(local_ids):
+    """DBにあるメールのフラグ状態をOutlookと同期する"""
+    if not local_ids:
+        return
+
+    token = get_access_token()
+    headers = {'Authorization': 'Bearer ' + token}
+    
+    print(f"既存メール({len(local_ids)}件)のステータスを確認中(Outlook)...")
+
+    # Outlookはバッチ取得も可能ですが、実装を簡単にするためループ処理します
+    for msg_id in local_ids:
+        try:
+            url = f"{GRAPH_API_ENDPOINT}/me/messages/{msg_id}"
+            params = {'$select': 'flag'} # フラグ情報だけ取得
+            
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                flag_status = data.get('flag', {}).get('flagStatus')
+                new_status = 2 if flag_status == 'flagged' else 0
+                
+                models.update_email_status_by_message_id(msg_id, new_status)
+            elif response.status_code == 404:
+                pass # 削除済み
+        except Exception as e:
+            print(f"ステータス確認エラー(Outlook): {e}")
 
 def sync_outlook():
     """OutlookとDBを同期する"""
@@ -160,18 +196,16 @@ def sync_outlook():
         print(f"Outlookへの接続に失敗しました: {e}")
         return
 
-    # 2. DBにあるOutlookのID (★重要: GmailのIDと混ぜないため指定して取得)
-    # models.py に新しく追加する関数を使います
+    # 2. DBにあるOutlookのID
     if hasattr(models, 'get_message_ids_by_service'):
         local_stored_ids = models.get_message_ids_by_service('outlook')
     else:
-        # 関数がない場合のフォールバック（推奨されません）
-        print("警告: models.pyが更新されていないため、同期が不正確になる可能性があります。")
         local_stored_ids = models.get_all_message_ids()
 
     # 3. 差分計算
     new_ids = server_unread_ids - local_stored_ids
     read_ids = local_stored_ids - server_unread_ids
+    existing_ids = server_unread_ids & local_stored_ids
     
     # 4. DB更新
     if read_ids:
@@ -181,6 +215,10 @@ def sync_outlook():
     if new_ids:
         print(f"新着検知(Outlook): {len(new_ids)} 件 -> 詳細を取得して保存します")
         fetch_details_and_save(new_ids)
+        
+    # 5. 既存メールのフラグ状態を同期
+    if existing_ids:
+        update_flagged_status(existing_ids)
 
 def mark_as_read(message_id):
     """Outlookのメールを既読にする"""
@@ -194,7 +232,6 @@ def mark_as_read(message_id):
     data = {'isRead': True}
 
     try:
-        # PATCHメソッドで更新
         response = requests.patch(url, headers=headers, json=data)
         if response.status_code == 200:
             print(f"Outlook既読化成功: {message_id}")
@@ -204,6 +241,53 @@ def mark_as_read(message_id):
             return False
     except Exception as e:
         print(f"Outlook既読化エラー: {e}")
+        return False
+    
+def mark_as_important(message_id):
+    """Outlookのメールにフラグを立てる"""
+    token = get_access_token()
+    headers = {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+    }
+    
+    url = f"{GRAPH_API_ENDPOINT}/me/messages/{message_id}"
+    data = {'flag': {'flagStatus': 'flagged'}}
+
+    try:
+        response = requests.patch(url, headers=headers, json=data)
+        if response.status_code == 200:
+            print(f"Outlook重要設定(フラグ)成功: {message_id}")
+            return True
+        else:
+            print(f"Outlook重要設定失敗: {response.status_code} {response.text}")
+            return False
+    except Exception as e:
+        print(f"Outlook重要設定エラー: {e}")
+        return False
+
+def mark_as_unimportant(message_id):
+    """Outlookのメールからフラグを外す"""
+    token = get_access_token()
+    headers = {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+    }
+    
+    url = f"{GRAPH_API_ENDPOINT}/me/messages/{message_id}"
+    # フラグを外すには flagStatus: 'notFlagged'
+    data = {'flag': {'flagStatus': 'notFlagged'}}
+
+    try:
+        response = requests.patch(url, headers=headers, json=data)
+        if response.status_code == 200:
+            print(f"Outlook重要解除(フラグ削除)成功: {message_id}")
+            return True
+        else:
+            print(f"Outlook重要解除失敗: {response.status_code} {response.text}")
+            return False
+    except Exception as e:
+        print(f"Outlook重要解除エラー: {e}")
         return False
 
 if __name__ == '__main__':

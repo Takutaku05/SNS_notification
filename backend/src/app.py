@@ -66,11 +66,65 @@ def mark_as_pending(db_id):
 
 @app.route('/api/emails/<int:db_id>/important', methods=['POST'])
 def mark_as_important(db_id):
-    """メールを重要にする"""
-    if models.update_email_status(db_id, 2): # 2: Important
-        return jsonify({'success': True})
+    """メールを重要にする（外部連携あり）"""
+    email = models.get_email_by_id(db_id)
+    if not email:
+        return jsonify({'error': 'Email not found'}), 404
+        
+    service = email['service']
+    message_id = email['message_id']
+    success = False
+    
+    # 各サービスの重要(スター/フラグ)処理を呼び出し
+    if service == 'gmail':
+        success = gmail_fetcher.mark_as_important(message_id)
+    elif service.startswith('imap:'):
+        success = imap_fetcher.mark_as_important(service, message_id)
+    elif service == 'outlook':
+        success = outlook_fetcher.mark_as_important(message_id)
     else:
-        return jsonify({'error': 'Failed to update status'}), 500
+        success = True
+        print(f"Warning: {service} の重要連携は未実装です。")
+
+    if success:
+        # 連携に成功したらDBのステータスを更新 (2: Important)
+        if models.update_email_status(db_id, 2): 
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'Failed to update local status'}), 500
+    else:
+        return jsonify({'error': 'Failed to mark as important on server'}), 500
+
+@app.route('/api/emails/<int:db_id>/unimportant', methods=['POST'])
+def mark_as_unimportant(db_id):
+    """メールを重要から削除する（スター/フラグを外す）"""
+    email = models.get_email_by_id(db_id)
+    if not email:
+        return jsonify({'error': 'Email not found'}), 404
+        
+    service = email['service']
+    message_id = email['message_id']
+    success = False
+    
+    # 各サービスの重要解除処理を呼び出し
+    if service == 'gmail':
+        success = gmail_fetcher.mark_as_unimportant(message_id)
+    elif service.startswith('imap:'):
+        success = imap_fetcher.mark_as_unimportant(service, message_id)
+    elif service == 'outlook':
+        success = outlook_fetcher.mark_as_unimportant(message_id)
+    else:
+        success = True
+        print(f"Warning: {service} の重要解除連携は未実装です。")
+
+    if success:
+        # 成功したらステータスを未読(0)に戻す
+        if models.update_email_status(db_id, 0): # 0: Unread
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'Failed to update local status'}), 500
+    else:
+        return jsonify({'error': 'Failed to mark as unimportant on server'}), 500
     
 @app.route('/api/emails/next', methods=['GET'])
 def get_next_email():

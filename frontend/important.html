@@ -101,6 +101,15 @@
             background-color: #c82333;
         }
 
+        /* 重要解除ボタン用のスタイル */
+        .btn-unimportant {
+            background-color: #6c757d;
+            margin-right: 10px;
+        }
+        .btn-unimportant:hover {
+            background-color: #5a6268;
+        }
+
         #loading {
             color: #888;
         }
@@ -125,7 +134,7 @@
 
             <button class="btn btn-reload" onclick="skipEmail()">スキップ</button>
             <button class="btn btn-pending" onclick="markAsPending()">保留</button>
-            <button class="btn btn-important" onclick="markAsImportant()">重要</button>
+            <button class="btn btn-unimportant" onclick="markAsUnimportant()">重要解除</button>
             <button class="btn" onclick="markAsRead()">既読</button>
         </div>
         <div id="no-email" style="display: none;">
@@ -137,15 +146,13 @@
 
     <script>
         let currentEmailId = null;
-        let skipCount = 0; // 追加: スキップした回数を保持
+        let skipCount = 0; 
 
-        // スキップボタンから呼ばれる関数
         function skipEmail() {
-            skipCount++; // カウントを増やす
+            skipCount++;
             loadNextEmail();
         }
 
-        // 再チェックボタンなどから呼ばれる関数（リセットしてロード）
         function resetAndLoad() {
             skipCount = 0;
             loadNextEmail();
@@ -157,7 +164,7 @@
             document.getElementById('no-email').style.display = 'none';
 
             try {
-                // offsetパラメータをつけてリクエスト (status=2: Important)
+                // Important = status: 2
                 const response = await fetch(`/api/emails/next?status=2&offset=${skipCount}`);
                 if (response.ok) {
                     const email = await response.json();
@@ -200,7 +207,7 @@
                     method: 'POST'
                 });
                 if (response.ok) {
-                    skipCount = 0; // 成功したらリストが詰まるのでオフセットをリセット
+                    skipCount = 0;
                     loadNextEmail();
                 } else {
                     alert('既読化に失敗しました');
@@ -219,7 +226,7 @@
                     method: 'POST'
                 });
                 if (response.ok) {
-                    skipCount = 0; // リセット
+                    skipCount = 0; 
                     loadNextEmail();
                 } else {
                     alert('保留に失敗しました');
@@ -230,18 +237,18 @@
             }
         }
 
-        async function markAsImportant() {
+        async function markAsUnimportant() {
             if (!currentEmailId) return;
 
             try {
-                const response = await fetch(`/api/emails/${currentEmailId}/important`, {
+                const response = await fetch(`/api/emails/${currentEmailId}/unimportant`, {
                     method: 'POST'
                 });
                 if (response.ok) {
                     skipCount = 0; // リセット
                     loadNextEmail();
                 } else {
-                    alert('重要設定に失敗しました');
+                    alert('重要解除に失敗しました');
                 }
             } catch (error) {
                 console.error('Error:', error);

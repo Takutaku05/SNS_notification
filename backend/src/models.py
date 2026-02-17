@@ -37,6 +37,8 @@ def save_emails(email_list):
     # リストの中身をタプルの形式に変換
     data = []
     for e in email_list:
+        status = e.get('status', 0)
+        
         data.append((
             e['service'],
             e['message_id'],
@@ -44,7 +46,7 @@ def save_emails(email_list):
             e['sender'],
             e['snippet'],
             e['received_at'],
-            0 # status: 0=Unread
+            status
         ))
 
     # データベースに保存
@@ -55,7 +57,8 @@ def save_emails(email_list):
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', data)
         conn.commit()
-        print(f"{c.rowcount} 件の新規メールを保存しました")
+        if c.rowcount > 0:
+            print(f"{c.rowcount} 件の新規メールを保存しました")
     except sqlite3.Error as e:
         print(f"保存エラー: {e}")
     finally:
@@ -134,6 +137,25 @@ def update_email_status(db_id, status):
         return False
     finally:
         conn.close()
+
+def update_email_status_by_message_id(message_id, status):
+    """message_idを指定してステータスを更新する"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        # 現在のステータスを取得（無駄な更新を防ぐため）
+        c.execute("SELECT status FROM emails WHERE message_id = ?", (message_id,))
+        row = c.fetchone()
+        if row and row[0] != status:
+            c.execute("UPDATE emails SET status = ? WHERE message_id = ?", (status, message_id))
+            conn.commit()
+            print(f"ステータス更新({message_id}): {row[0]} -> {status}")
+            return True
+    except Exception as e:
+        print(f"ステータス更新エラー: {e}")
+    finally:
+        conn.close()
+    return False
 
 # 初期化実行
 if __name__ == "__main__":

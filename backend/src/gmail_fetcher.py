@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 
 import models
 
-# パス設定（Outlook版に合わせて明示的な名前に変更）
+# パス設定
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CREDENTIALS_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'gmail_credentials.json')
 TOKEN_PATH = os.path.join(BASE_DIR, '..', 'credentials', 'gmail_token.json')
@@ -79,6 +79,7 @@ def fetch_details_and_save(target_ids):
             
             payload = detail.get('payload', {})
             headers = payload.get('headers', [])
+            label_ids = detail.get('labelIds', []) # ラベルIDを取得
             
             subject = "(件名なし)"
             sender = "(不明)"
@@ -92,15 +93,22 @@ def fetch_details_and_save(target_ids):
             internal_date = int(detail.get('internalDate', 0))
             received_at = datetime.datetime.fromtimestamp(internal_date / 1000.0)
 
+            # スターが付いているか判定 (STARREDラベル)
+            # 2: Important, 0: Unread
+            status = 2 if 'STARRED' in label_ids else 0
+
             email_data_list.append({
                 'service': 'gmail',
                 'message_id': msg_id,
                 'subject': subject,
                 'sender': sender,
                 'snippet': snippet,
-                'received_at': received_at
+                'received_at': received_at,
+                'status': status # ステータスを追加
             })
-            print(f"取得(Gmail): {subject[:20]}...")
+            
+            status_str = "★重要" if status == 2 else "未読"
+            print(f"取得(Gmail): {subject[:20]}... [{status_str}]")
             count += 1
             
         except Exception as e:
@@ -124,6 +132,63 @@ def mark_as_read(message_id):
         print(f"Gmail既読化エラー: {e}")
         return False
 
+def mark_as_important(message_id):
+    """Gmailのメールにスターを付ける（STARREDラベルを追加）"""
+    service = get_gmail_service()
+    try:
+        service.users().messages().modify(
+            userId='me',
+            id=message_id,
+            body={'addLabelIds': ['STARRED']}
+        ).execute()
+        print(f"Gmail重要設定(スター)成功: {message_id}")
+        return True
+    except Exception as e:
+        print(f"Gmail重要設定エラー: {e}")
+        return False
+
+def mark_as_unimportant(message_id):
+    """Gmailのメールからスターを外す（STARREDラベルを削除）"""
+    service = get_gmail_service()
+    try:
+        service.users().messages().modify(
+            userId='me',
+            id=message_id,
+            body={'removeLabelIds': ['STARRED']}
+        ).execute()
+        print(f"Gmail重要解除(スター削除)成功: {message_id}")
+        return True
+    except Exception as e:
+        print(f"Gmail重要解除エラー: {e}")
+        return False
+
+def update_starred_status(local_ids):
+    """DBにあるメールのスター状態をGmailと同期する"""
+    if not local_ids:
+        return
+
+    service = get_gmail_service()
+    print(f"既存メール({len(local_ids)}件)のステータスを確認中...")
+
+    for msg_id in local_ids:
+        try:
+            # IDとラベル情報だけを軽量に取得
+            msg = service.users().messages().get(
+                userId='me', id=msg_id, format='minimal', fields='id,labelIds'
+            ).execute()
+            
+            label_ids = msg.get('labelIds', [])
+            
+            # DB上のメール情報を取得して現在のステータスと比較
+            # STARREDなら2、そうでなければ0
+            new_status = 2 if 'STARRED' in label_ids else 0
+            
+            models.update_email_status_by_message_id(msg_id, new_status)
+            
+        except Exception as e:
+            # 404の場合はメールが削除されている可能性があるので無視
+            pass
+
 def sync_gmail():
     """GmailとDBを同期する"""
     print("Gmailの同期を開始します...")
@@ -135,16 +200,16 @@ def sync_gmail():
         print(f"Gmailへの接続に失敗しました: {e}")
         return
     
-    # 2. ローカル(DB)にあるGmailのIDのみを取得（他サービスのIDを混ぜない）
+    # 2. ローカル(DB)にあるGmailのIDのみを取得
     if hasattr(models, 'get_message_ids_by_service'):
         local_stored_ids = models.get_message_ids_by_service('gmail')
     else:
-        # 古いmodels.pyの場合のフォールバック
         local_stored_ids = models.get_all_message_ids()
     
     # 3. 差分を計算
     new_ids = server_unread_ids - local_stored_ids
     read_ids = local_stored_ids - server_unread_ids
+    existing_ids = server_unread_ids & local_stored_ids # 両方にあるID（更新チェック対象）
     
     # 4. DBを更新
     if read_ids:
@@ -154,6 +219,10 @@ def sync_gmail():
     if new_ids:
         print(f"新着検知(Gmail): {len(new_ids)} 件 -> 詳細を取得して保存します")
         fetch_details_and_save(new_ids)
+        
+    # 5. 既存メールのスター状態を同期
+    if existing_ids:
+        update_starred_status(existing_ids)
 
 if __name__ == '__main__':
     models.init_db()
