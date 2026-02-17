@@ -16,6 +16,14 @@ def index():
 def read_page():
     return send_from_directory(app.static_folder, 'read.html')
 
+@app.route('/important')
+def important_page():
+    return send_from_directory(app.static_folder, 'important.html')
+
+@app.route('/hold')
+def hold_page():
+    return send_from_directory(app.static_folder, 'hold.html')
+
 @app.route('/api/emails/<int:db_id>/read', methods=['POST'])
 def mark_as_read(db_id):
     """メールを既読にする"""
@@ -65,12 +73,14 @@ def mark_as_important(db_id):
         return jsonify({'error': 'Failed to update status'}), 500
     
 @app.route('/api/emails/next', methods=['GET'])
-def get_next_unread_email():
-    """未読メールを1件取得"""
+def get_next_email():
+    """メールを1件取得 (status指定可)"""
     # クエリパラメータからoffsetを取得 (デフォルトは0)
     offset = request.args.get('offset', default=0, type=int)
+    # status: 0=Unread, 1=Pending, 2=Important
+    status = request.args.get('status', default=0, type=int)
     
-    email = models.get_next_unread_email(offset) # offsetを渡す
+    email = models.get_next_email(status=status, offset=offset)
     if email:
         return jsonify(email)
     else:

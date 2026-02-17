@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNS通知統合</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify_content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .email-info {
+            text-align: left;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+        }
+
+        .email-info p {
+            margin: 0.5rem 0;
+            color: #555;
+        }
+
+        .email-info span {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .snippet {
+            text-align: left;
+            background-color: #f9f9f9;
+            padding: 1rem;
+            border-radius: 4px;
+            color: #666;
+            margin-bottom: 2rem;
+            min-height: 100px;
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-reload {
+            background-color: #6c757d;
+            margin-right: 10px;
+        }
+
+        .btn-reload:hover {
+            background-color: #545b62;
+        }
+
+        .btn-pending {
+            background-color: #ffc107;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        .btn-pending:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-important {
+            background-color: #dc3545;
+            margin-right: 10px;
+        }
+
+        .btn-important:hover {
+            background-color: #c82333;
+        }
+
+        #loading {
+            color: #888;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card" id="card">
+        <div style="text-align: left; margin-bottom: 10px;">
+            <a href="/" style="text-decoration: none; color: #888; font-size: 0.9rem;">&larr; 戻る</a>
+        </div>
+        <h1 style="color: #dc3545;">重要メッセージ</h1>
+        <div id="content" style="display: none;">
+            <div class="email-info">
+                <p><span>From:</span> <span id="sender"></span></p>
+                <p><span>Subject:</span> <span id="subject"></span></p>
+                <p><span>Date:</span> <span id="date"></span></p>
+                <p><span>Service:</span> <span id="service"></span></p>
+            </div>
+            <div class="snippet" id="snippet"></div>
+
+            <button class="btn btn-reload" onclick="skipEmail()">スキップ</button>
+            <button class="btn btn-pending" onclick="markAsPending()">保留</button>
+            <button class="btn btn-important" onclick="markAsImportant()">重要</button>
+            <button class="btn" onclick="markAsRead()">既読</button>
+        </div>
+        <div id="no-email" style="display: none;">
+            <p>新しいメールはありません。</p>
+            <button class="btn btn-reload" onclick="loadNextEmail()">再チェック</button>
+        </div>
+        <div id="loading">Loading...</div>
+    </div>
+
+    <script>
+        let currentEmailId = null;
+        let skipCount = 0; // 追加: スキップした回数を保持
+
+        // スキップボタンから呼ばれる関数
+        function skipEmail() {
+            skipCount++; // カウントを増やす
+            loadNextEmail();
+        }
+
+        // 再チェックボタンなどから呼ばれる関数（リセットしてロード）
+        function resetAndLoad() {
+            skipCount = 0;
+            loadNextEmail();
+        }
+
+        async function loadNextEmail() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('no-email').style.display = 'none';
+
+            try {
+                // offsetパラメータをつけてリクエスト (status=2: Important)
+                const response = await fetch(`/api/emails/next?status=2&offset=${skipCount}`);
+                if (response.ok) {
+                    const email = await response.json();
+                    renderEmail(email);
+                } else {
+                    showNoEmail();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNoEmail();
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function renderEmail(email) {
+            if (!email) {
+                showNoEmail();
+                return;
+            }
+            currentEmailId = email.id;
+            document.getElementById('sender').textContent = email.sender;
+            document.getElementById('subject').textContent = email.subject;
+            document.getElementById('date').textContent = new Date(email.received_at).toLocaleString();
+            document.getElementById('service').textContent = email.service;
+            document.getElementById('snippet').textContent = email.snippet;
+
+            document.getElementById('content').style.display = 'block';
+        }
+
+        function showNoEmail() {
+            document.getElementById('no-email').style.display = 'block';
+        }
+
+        async function markAsRead() {
+            if (!currentEmailId) return;
+
+            try {
+                const response = await fetch(`/api/emails/${currentEmailId}/read`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    skipCount = 0; // 成功したらリストが詰まるのでオフセットをリセット
+                    loadNextEmail();
+                } else {
+                    alert('既読化に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('通信エラー');
+            }
+        }
+
+        async function markAsPending() {
+            if (!currentEmailId) return;
+
+            try {
+                const response = await fetch(`/api/emails/${currentEmailId}/pending`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    skipCount = 0; // リセット
+                    loadNextEmail();
+                } else {
+                    alert('保留に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('通信エラー');
+            }
+        }
+
+        async function markAsImportant() {
+            if (!currentEmailId) return;
+
+            try {
+                const response = await fetch(`/api/emails/${currentEmailId}/important`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    skipCount = 0; // リセット
+                    loadNextEmail();
+                } else {
+                    alert('重要設定に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('通信エラー');
+            }
+        }
+
+        // 初回読み込み
+        loadNextEmail();
+    </script>
+
+</body>
+
+</html>
