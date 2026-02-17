@@ -71,23 +71,31 @@ SNS_notification/
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
-├── frontend/                  
-│   └── index.html
-└── backend/                   
-    ├── credentials/          
-    │   ├── gmail_credentials.json
-    │   ├── gmail_token.json
-    │   ├── imap_credentials.json
-    │   ├── outlook_credentials.json
-    │   └── outlook_token.json
-    ├── db/                   
-    │   └── emails.db
-    └── src/                   
-        ├── app.py             # Flaskサーバー
-        ├── models.py          # データベース操作
-        ├── gmail_fetcher.py   # Gmail取得
-        ├── imap_fetcher.py    # Yahoo/iCloud等取得
-        └── outlook_fetcher.py # Outlook取得
+├── backend/
+│   ├── credentials/
+│   │   ├── gmail_credentials.json
+│   │   ├── gmail_token.json
+│   │   ├── imap_credentials.json
+│   │   ├── outlook_credentials.json
+│   │   └── outlook_token.json
+│   ├── db/
+│   │   └── emails.db
+│   └── src/
+│       ├── __pycache__/
+│       │   ├── gmail_fetcher.cpython-312.pyc
+│       │   ├── imap_fetcher.cpython-312.pyc
+│       │   ├── models.cpython-312.pyc
+│       │   └── outlook_fetcher.cpython-312.pyc
+│       ├── app.py
+│       ├── gmail_fetcher.py
+│       ├── imap_fetcher.py
+│       ├── models.py
+│       └── outlook_fetcher.py
+└── frontend/
+    ├── hold.html
+    ├── important.html
+    ├── index.html
+    └── read.html
 ```
 
 ## 実行方法
